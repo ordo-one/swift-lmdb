@@ -410,7 +410,9 @@ typedef struct mdb_mutex {
 	struct sembuf sb = { 0, 1, SEM_UNDO }; \
 	sb.sem_num = (mutex)->semnum; \
 	*(mutex)->locked = 0; \
-	semop((mutex)->semid, &sb, 1); \
+	if (semop((mutex)->semid, &sb, 1) < 0) { \
+	    abort(); \
+	} \
 } while(0)
 
 static int
@@ -426,6 +428,9 @@ mdb_sem_wait(mdb_mutexref_t sem)
 			break;
 		}
 	} while ((rc = errno) == EINTR);
+	if (rc < 0 && rc != MDB_OWNERDEAD) {
+	    abort();
+	}
 	return rc;
 }
 
@@ -5421,10 +5426,10 @@ mdb_env_setup_locks(MDB_env *env, MDB_name *fname, int mode, int *excl)
 			goto fail_errno;
 		semid = semget(key, 2, (mode & 0777) | IPC_CREAT);
 		if (semid < 0)
-			goto fail_errno;
+		   	abort();
 		semu.array = vals;
 		if (semctl(semid, 0, SETALL, semu) < 0)
-			goto fail_errno;
+			abort();
 		env->me_txns->mti_semid = semid;
 		env->me_txns->mti_rlocked = 0;
 		env->me_txns->mti_wlocked = 0;
@@ -5492,10 +5497,10 @@ mdb_env_setup_locks(MDB_env *env, MDB_name *fname, int mode, int *excl)
 		semu.buf = &buf;
 		/* check for read access */
 		if (semctl(semid, 0, IPC_STAT, semu) < 0)
-			goto fail_errno;
+		    	abort();
 		/* check for write access */
 		if (semctl(semid, 0, IPC_SET, semu) < 0)
-			goto fail_errno;
+		    	abort();
 #endif
 	}
 #ifdef MDB_USE_SYSV_SEM
@@ -5796,7 +5801,10 @@ mdb_env_close0(MDB_env *env, int excl)
 			if (excl == 0)
 				mdb_env_excl_lock(env, &excl);
 			if (excl > 0)
-				semctl(env->me_rmutex->semid, 0, IPC_RMID);
+				if (semctl(env->me_rmutex->semid, 0, IPC_RMID) < 0) {
+				    abort();
+				}
+
 		}
 #elif defined(MDB_ROBUST_SUPPORTED)
 		/* If we have the filelock:  If we are the
