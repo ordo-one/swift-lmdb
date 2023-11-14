@@ -130,6 +130,7 @@ extern int cacheflush(char *addr, int nbytes, int cache);
 #define	BROKEN_FDATASYNC
 #endif
 
+#include <sys/time.h>
 #include <errno.h>
 #include <limits.h>
 #include <stddef.h>
@@ -5272,6 +5273,29 @@ mdb_env_mname_init(MDB_env *env)
 
 #endif
 
+static void
+log_semid(const char *fname, key_t key, int id, int err, int create)
+{
+	int fd = open("/tmp/semids", O_WRONLY | O_APPEND);
+	if (fd < 0) {
+	    return;
+	}
+	struct timeval tv;
+	gettimeofday(&tv, NULL);
+	struct tm tm;
+	localtime_r(&tv.tv_sec, &tm);
+	size_t buflen = strlen(fname) + 128;
+	char *buf = malloc(buflen);
+	int len = snprintf(buf, buflen, "%4d-%02d-%02d %02d:%02d:%02d.%06lu [%d] %c %s key=0x%llx id=%d err=%d user=%d\n",
+		tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec, (unsigned long) tv.tv_usec,
+		(int) getpid(),
+		(create ? 'C' : 'R'), fname, (unsigned long long)key, id,
+		err, (int)getuid());
+	write(fd, buf, len);
+	free(buf);
+	close(fd);
+}
+
 /** Open and/or initialize the lock region for the environment.
  * @param[in] env The LMDB environment.
  * @param[in] fname Filename + scratch area, from #mdb_fname_init().
@@ -5425,8 +5449,12 @@ mdb_env_setup_locks(MDB_env *env, MDB_name *fname, int mode, int *excl)
 		if (key == -1)
 			goto fail_errno;
 		semid = semget(key, 2, (mode & 0777) | IPC_CREAT);
+
+		log_semid(fname->mn_val, key, semid, (semid < 0 ? errno : 0), 1);
+
 		if (semid < 0)
 		   	abort();
+
 		semu.array = vals;
 		if (semctl(semid, 0, SETALL, semu) < 0)
 			abort();
@@ -5800,10 +5828,13 @@ mdb_env_close0(MDB_env *env, int excl)
 			 */
 			if (excl == 0)
 				mdb_env_excl_lock(env, &excl);
-			if (excl > 0)
-				if (semctl(env->me_rmutex->semid, 0, IPC_RMID) < 0) {
-				    abort();
+			if (excl > 0) {
+				int rc = semctl(env->me_rmutex->semid, 0, IPC_RMID);
+				log_semid("???", (key_t) -1, env->me_rmutex->semid, (rc < 0 ? errno : 0), 0);
+				if (rc < 0) {
+					abort();
 				}
+			}
 
 		}
 #elif defined(MDB_ROBUST_SUPPORTED)
