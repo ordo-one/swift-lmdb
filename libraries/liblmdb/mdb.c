@@ -809,7 +809,7 @@ typedef struct MDB_rxbody {
 	 *	started from so we can avoid overwriting any data used in that
 	 *	particular version.
 	 */
-	 txnid_t		mrb_txnid;
+	_Atomic txnid_t		mrb_txnid;
 	/** The process ID of the process owning this reader txn. */
 	_Atomic MDB_PID_T	mrb_pid;
 	/** The thread ID of the thread owning this txn. */
