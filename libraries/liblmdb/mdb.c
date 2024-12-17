@@ -809,11 +809,11 @@ typedef struct MDB_rxbody {
 	 *	started from so we can avoid overwriting any data used in that
 	 *	particular version.
 	 */
-	_Atomic txnid_t		mrb_txnid;
+	_Atomic txnid_t		mrb_txnid; // Changed to _Atomic to support IndexStoreDB
 	/** The process ID of the process owning this reader txn. */
-	_Atomic MDB_PID_T	mrb_pid;
+	_Atomic MDB_PID_T	mrb_pid; // Changed to _Atomic to support IndexStoreDB
 	/** The thread ID of the thread owning this txn. */
-	_Atomic MDB_THR_T	mrb_tid;
+	_Atomic MDB_THR_T	mrb_tid; // Changed to _Atomic to support IndexStoreDB
 } MDB_rxbody;
 
 	/** The actual reader record, with cacheline padding. */
@@ -853,12 +853,12 @@ typedef struct MDB_txbody {
 		 *	This is recorded here only for convenience; the value can always
 		 *	be determined by reading the main database meta pages.
 		 */
-	_Atomic txnid_t		mtb_txnid;
+	_Atomic txnid_t		mtb_txnid; // Changed to _Atomic to support IndexStoreDB
 		/** The number of slots that have been used in the reader table.
 		 *	This always records the maximum count, it is not decremented
 		 *	when readers release their slots.
 		 */
-	_Atomic unsigned	mtb_numreaders;
+	_Atomic unsigned	mtb_numreaders; // Changed to _Atomic to support IndexStoreDB
 #if defined(_WIN32) || defined(MDB_USE_POSIX_SEM)
 		/** Binary form of names of the reader/writer locks */
 	mdb_hash_t			mtb_mutexid;
@@ -1249,7 +1249,7 @@ typedef struct MDB_meta {
 	 *	Actually the file may be shorter if the freeDB lists the final pages.
 	 */
 	pgno_t		mm_last_pg;
-	_Atomic txnid_t	mm_txnid;	/**< txnid that committed this page */
+	_Atomic txnid_t	mm_txnid;	/**< txnid that committed this page */ // Changed to _Atomic to support IndexStoreDB
 } MDB_meta;
 
 	/** Buffer for a stack-allocated meta page.
@@ -1510,7 +1510,7 @@ struct MDB_env {
 	unsigned int	me_os_psize;	/**< OS page size, from #GET_PAGESIZE */
 	unsigned int	me_maxreaders;	/**< size of the reader table */
 	/** Max #MDB_txninfo.%mti_numreaders of interest to #mdb_env_close() */
-	_Atomic int	me_close_readers;
+	_Atomic int	me_close_readers; // Changed to _Atomic to support IndexStoreDB
 	MDB_dbi		me_numdbs;		/**< number of DBs opened */
 	MDB_dbi		me_maxdbs;		/**< size of the DB table */
 	MDB_PID_T	me_pid;		/**< process ID of this env */
@@ -10111,7 +10111,7 @@ typedef struct mdb_copy {
 	/** Error code.  Never cleared if set.  Both threads can set nonzero
 	 *	to fail the copy.  Not mutex-protected, LMDB expects atomic int.
 	 */
-	_Atomic int mc_error;
+	_Atomic int mc_error; // Changed to _Atomic to support IndexStoreDB
 } mdb_copy;
 
 	/** Dedicated writer thread for compacting copy. */
