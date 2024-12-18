@@ -12,6 +12,12 @@ cmake_minimum_required(VERSION 3.24)
 project(LMDB
   LANGUAGES C)
 
+set(CMAKE_C_STANDARD 11)
+
+if("${CMAKE_C_COMPILER_ID}" STREQUAL "MSVC" OR "${CMAKE_C_COMPILER_SIMULATE_ID}" STREQUAL "MSVC")
+  add_compile_options(/experimental:c11atomics)
+endif()
+
 # Set the build artifact directories to ensure that the generated products are
 # colocated and findable for wiring up into the test suites across repositories.
 # This pattern is applied to all Swift and LLVM repositories.
